@@ -1,6 +1,8 @@
+
 /** 
  *  USB chess board that uses Teensy 2.0.
  */
+
 #define DEBUG           1           // Debug flag
 #define NUM_ROWS  8
 #define NUM_COLS  8
@@ -29,7 +31,7 @@
 bool bComputerOponent = false;
 bool bSendEnter = true;         // Enviamos ENTER después de cada movimiento?
 bool bPlayAsWhite = true;       // El jugador humano juega con las piezas blancas
-bool bPlayerHasTurn = true      // Indica si el juegador humano tiene el turno.
+bool bPlayerHasTurn = true;     // Indica si el juegador humano tiene el turno.
 bool bWhiteCanCastle = true;    // Indica si el jugador blanco puede enrocar
 bool bBlackCanCastle = true;    // Indica si el jugador negro puede enrocar
 bool bPromoteQeenAlways = true; // Indica si las proocioens de peones son reinas autm.
@@ -75,29 +77,33 @@ void InitChessBoard(){
 }
 
 // Tipo de datos que define una casilla del tablero 
-struct chess_square {
+typedef struct {
     unsigned int row;
     unsigned int col;
-};
+} CHESS_SQUARE;
 
-void InitChessSquare(chess_square* square) {
-    square->row = 8;
-    square->col = 8;
-}
 
 // Tipo de datos que define un movimento de una pieza.
-struct chess_movement{
-    chess_square from;
-    chess_square to;
-};
-
-void InitChessMovement(chess_movement* movement){
-    InitChessSquare(&movement->from);
-    InitChessSquare(&movement->to);
-}
+typedef struct {
+    CHESS_SQUARE from;
+    CHESS_SQUARE to;
+} CHESS_MOVEMENT;
 
 // Variable que almacena el movimiento actual
-chess_movement current_movement;
+CHESS_MOVEMENT current_movement;
+
+// Declaración de funciones
+void InitChessSquare(CHESS_SQUARE* square);
+void InitChessMovement(CHESS_MOVEMENT* movement);
+CHESS_SQUARE getBoardDifference(byte board1[],byte board2[]);
+void initglobalVars();
+unsigned int getDifferenceNumber(byte differenceBoard[]);
+void updateChessBoard(byte newChessBoard[]);
+bool isSetMovement(CHESS_MOVEMENT movement);
+bool hasPiece(CHESS_SQUARE square, byte chessBoard[]);
+String translatMovement(const CHESS_MOVEMENT movement);
+unsigned int count_bit(byte x);
+//////////////////////////////////
 
 void initglobalVars() {
     bComputerOponent = true;
@@ -106,35 +112,30 @@ void initglobalVars() {
     bPlayerHasTurn = true;
     InitChessBoard(); // Inicializamos el tablero
     // Inicializamos el movimiento actual
-    InitChessMovement(&current_movement);∫
+    InitChessMovement(&current_movement);
     sampleBoard();
+}
+
+// Método que inicializa una casilla de ajedrez
+
+void InitChessSquare(CHESS_SQUARE* square)
+{
+    square->row = 8;
+    square->col = 8;
+    return;
+}
+
+void InitChessMovement(CHESS_MOVEMENT* movement){
+    InitChessSquare(&movement->from);
+    InitChessSquare(&movement->to);
 }
 
 ////////////////////////////////////////////////
 
-/* Metodo que se ejecuta una única vez e inicializa las variables y pines
-de la tarjeta */
-void setup() {
-    // Se ejecuta una única vez
-    pinMode(PLAYER_LED_PIN, OUTPUT);
-    pinMode(OPONENT_LED_PIN, OUTPUT);
-
-    // Establecemos los pines para las filas como salida
-    for (int i=0;i<NUM_ROWS;i++){
-        pinMode(rowPins[i], OUTPUT);
-        digitalWrite(rowPins[i], HIGH);
-    }
-    // Establecemos los pines de las columnas como entrada
-    for (int i=0;i<NUM_COLS;i++)
-        pinMode(colPins[i], INPUT);
-    
-    initglobalVars();
-
-}
 /* Metodo que devuelve la diferencias entre dos tableros en forma de matriz de bits
 siendo retval[fila][columna] = 0 si no hay diferencia y retval[fila][columna] = 1 si hay diferencia */
-chess_square getBoardDifference(byte[] board1,byte[] board2){
-    chess_square retval;
+CHESS_SQUARE getBoardDifference(byte board1[],byte board2[]){
+    CHESS_SQUARE retval;
     retval.row = 8;
     retval.col = 8;
 
@@ -165,11 +166,11 @@ unsigned int count_bit(byte x)
     1, 2, 2, 3, 2, 3, 3, 4
   };
 
-  return NIBBLE_LOOKUP[byte & 0x0F] + NIBBLE_LOOKUP[byte >> 4];
+  return NIBBLE_LOOKUP[x & 0x0F] + NIBBLE_LOOKUP[x >> 4];
 }
 
 // Metodo que devuelve el número de diferencias entre dos tableros de ajedrez
-unsigned int getDifferenceNumber(byte[] differenceBoard) 
+unsigned int getDifferenceNumber(byte differenceBoard[]) 
 {
     unsigned int retval = 0;
     for (int i=0;i<NELEMS(differenceBoard);i++)
@@ -190,7 +191,7 @@ void sampleBoard()
         digitalWrite(rowPins[row], LOW); // Ponemos a cero una fila entera
         for (int column=0;column<NUM_COLS;column++)
         {
-            if (digitalRead(colPin[column] == LOW)) {
+            if (digitalRead(colPins[column] == LOW)) {
                 // Hay una pieza en la casilla [row,column]
                 // http://stackoverflow.com/questions/47981/how-do-you-set-clear-and-toggle-a-single-bit-in-c-c
                 currentChessBoard[column] |= 1 << row; 
@@ -213,23 +214,23 @@ void sampleBoard()
         dshow("sampleBoard --> No debería haber más de un movimento de piezas a la vez");
         return;
     }
-    chess_square diffSquare = getBoardDifference(chessBoard,currentChessBoard);
+    CHESS_SQUARE diffSquare = getBoardDifference(chessBoard,currentChessBoard);
     if (current_movement.from.row == 8) {
         // Caso 1. No estaba inicilizada la casilla de origen del movimiento,
         // Por lo que se corresponde con el inicio del movimiento
         dshow("Inicializamos el origen del movimiento");
         current_movement.from = diffSquare;
     } else if (hasPiece(diffSquare,chessBoard)) {
-        // Caso 2. La casilla de origen ya está establecida y había una pieza en la casilla. Debe correspenderse a una captura de pieza.
+        // Caso 2. La casilla de origen ya está establecida y había una pieza en la casilla. Debe corresponderse a una captura de pieza.
     } else {
         dshow("Inicializamos el destino del movimiento");
         current_movement.to = diffSquare;
     }
 
     if (isSetMovement(current_movement)) {
-        char[4] strMovement = translatMovement(current_movement);
+        String strMovement = translatMovement(current_movement);
         dprint(strMovement);
-        if (bSendEnter) // Si hay que enviar ENTER al final del movime¡iento
+        if (bSendEnter) // Si hay que enviar ENTER al final del movimiento
             Keyboard.println(strMovement);
         else 
             Keyboard.print(strMovement);
@@ -238,41 +239,62 @@ void sampleBoard()
     }
     // Actualizamos el tablero actual
     updateChessBoard(currentChessBoard);
-    dshow("sampleBoard --> FIn del procedimiento");
+    dshow("sampleBoard --> Fin del procedimiento");
 }
-// Funcion que convierte una estructura de tipe chess_movement a una cadena del tipo
+
+// Funcion que convierte una estructura de tipe CHESS_MOVEMENT a una cadena del tipo
 // "e2e4"
-char[4] translatMovement(const chess_movement movement){
-    char[4] retval;
+String translatMovement(const CHESS_MOVEMENT movement){
+    String retval = "";
     if (bPlayAsWhite) {
-        retval[0] = 'a' + movement.from.col;
-        retval[1] = '1' + movement.from.row;
-        retval[2] = 'a' + movement.to.col;
-        retval[3] = '1' + movement.to.row;
+        retval += 'a' + movement.from.col;
+        retval += '1' + movement.from.row;
+        retval+= 'a' + movement.to.col;
+        retval+= '1' + movement.to.row;
     } else {
-        retval[0] = 'a' + movement.from.col;
-        retval[1] = '8' - movement.from.row;
-        retval[2] = 'a' + movement.to.col;
-        retval[3] = '8' - movement.to.row;
+        retval += 'a' + movement.from.col;
+        retval += '8' - movement.from.row;
+        retval += 'a' + movement.to.col;
+        retval += '8' - movement.to.row;
     }
     return retval;
 }
 
 // Procedimiento que actualiza el tablero actual de ajedrez
-void updateChessBoard(byte[] newChessBoard){
+void updateChessBoard(byte newChessBoard[]){
    memcpy(chessBoard,newChessBoard,sizeof(newChessBoard)); 
 }
 
 // Funcion que comprueba si un movimiento de ajedrez ha sido completamente inicializado
-bool isSetMovement(chess_movement movement) {
+bool isSetMovement(CHESS_MOVEMENT movement) {
     return movement.from.row != 8 && movement.from.col != 8 &&
            movement.to.row != 8 && movement.to.col != 8;
 }
 
 // Funcion que calcula si hay pieza en una casilla
-bool hasPiece(chess_square square, byte[] chessBoard){
+bool hasPiece(CHESS_SQUARE square, byte chessBoard[]){
     byte b = chessBoard[square.col];
     return (b & ( 1 << square.row)); // http://stackoverflow.com/questions/8920840/a-function-to-check-if-the-nth-bit-is-set-in-a-byte
+}
+
+/* Metodo que se ejecuta una única vez e inicializa las variables y pines
+de la tarjeta */
+void setup() {
+    // Se ejecuta una única vez
+    pinMode(PLAYER_LED_PIN, OUTPUT);
+    pinMode(OPONENT_LED_PIN, OUTPUT);
+
+    // Establecemos los pines para las filas como salida
+    for (int i=0;i<NUM_ROWS;i++){
+        pinMode(rowPins[i], OUTPUT);
+        digitalWrite(rowPins[i], HIGH);
+    }
+    // Establecemos los pines de las columnas como entrada
+    for (int i=0;i<NUM_COLS;i++)
+        pinMode(colPins[i], INPUT);
+    
+    initglobalVars();
+
 }
 
 void loop() {
