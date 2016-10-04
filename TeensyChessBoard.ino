@@ -3,6 +3,7 @@
  */
 
 #define DEBUG           1           // Debug flag
+#define SAMPLE_DELAY    1000        // Constante que define el retardo en el muestreo del tablero en milisegundos
 #define NUM_ROWS  8
 #define NUM_COLS  8
 // Pines para los leds
@@ -340,10 +341,20 @@ Swaps the game turn
 void reinstateGame() {
 
 }
+
+// Método que cambia el sentido del tablero de ajedrez
+void flipBoard() {
+    bPlayAsWhite = !bPlayAsWhite;
+}
+
 /* Metodo que se ejecuta una única vez e inicializa las variables y pines
 de la tarjeta */
 void setup() {
-    // Se ejecuta una única vez
+    // Ponemos los pines de los botones como entrada
+    pinMode(BUT_CHANGE_OPONENT,INPUT);
+    pinMode(BUT_FLIP_BOARD,INPUT);
+    pinMode(BUT_CHANGE_OPONENT,INPUT);
+    pinMode(BUT_NEWGAME_PIN,INPUT);
     pinMode(PLAYER_LED_PIN, OUTPUT);
     pinMode(OPONENT_LED_PIN, OUTPUT);
 
@@ -372,7 +383,7 @@ void loop() {
     }
     if (digitalRead(BUT_FLIP_BOARD) == HIGH) {
         dshow("Pulsado el botón de DAR LA VUELTA AL TABLERO");
-        bPlayAsWhite = !bPlayAsWhite;
+        flipBoard();
     }
     if (digitalRead(BUT_CHANGE_OPONENT) == HIGH) {
         dshow("Pulsado el botón de cambio de oponente");
@@ -387,5 +398,6 @@ void loop() {
         digitalWrite(OPONENT_LED_PIN,(digitalRead(OPONENT_LED_PIN) == HIGH ? LOW : HIGH));
     }
     sampleBoard();
-    delay(1000);
+    // Nos echamos una pequeña siesta
+    delay(SAMPLE_DELAY);
 }
